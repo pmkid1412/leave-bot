@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leave Request Chatbot</title>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .chat-container {
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            padding: 20px;
+            height: 400px;
+            overflow-y: auto;
+            background-color: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .message {
+            margin: 10px 0;
+            padding: 12px;
+            border-radius: 8px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+
+        .bot {
+            background-color: #f0f0f0;
+            margin-right: 20%;
+            color: #333;
+        }
+
+        .user {
+            background-color: #007bff;
+            color: white;
+            margin-left: 20%;
+        }
+
+        input[type="text"], 
+        input[type="email"] {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            box-sizing: border-box;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="text"]:focus, 
+        input[type="email"]:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+
+        .button-container {
+            display: none;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 10px 0;
+            color: #666;
+        }
+
+        .error {
+            color: #dc3545;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        .success {
+            color: #28a745;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container" id="chatContainer"></div>
+    <input type="email" id="userInput" placeholder="Enter your response...">
+    <div class="button-container" id="buttonContainer">
+        <button onclick="handleButton('Yes')">Yes</button>
+        <button onclick="handleButton('No')">No</button>
+    </div>
+    <div class="loading" id="loading">Sending email...</div>
+
+    <script>
+        // Initialize EmailJS
+        (function() {
+            emailjs.init("3Ni7-NeVzb3Tsn-2Q"); // Replace with your EmailJS public key
+        })();
+
+        const validEmails = {
+            'phuongmark@gmail.com': {
+                name: 'John',
+                manager: 'phuongmark@gmail.com'
+            },
+            'jane@company.com': {
+                name: 'Jane',
+                manager: 'manager2@company.com'
+            },
+            // Add more valid emails here
+        };
+
+        let currentStep = 1;
+        let userData = {};
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        function sendEmailNotification() {
+            showLoading(true);
+
+            const templateParams = {
+                to_email: userData.manager,
+                employee_name: userData.name,
+                employee_email: userData.email,
+                leave_date: userData.date,
+                leave_reason: userData.reason,
+                notes: userData.notes || 'No notes provided'
+            };
+
+            // Replace with your EmailJS service ID and template ID
+            emailjs.send('service_8510yop', 'template_i9odkc2', templateParams)   
+                .then(function(response) {
+                    console.log('Email sent successfully:', response);
+                    showLoading(false);
+                    addMessage('Your leave request has been sent to your manager.', false, 'success');
+                })
+                .catch(function(error) {
+                    console.error('Email failed to send:', error);
+                    showLoading(false);
+                    addMessage('There was an error sending your leave request. Please try again later.', false, 'error');
+                });
+        }
+
+        function addMessage(message, isUser = false, className = '') {
+            const chatContainer = document.getElementById('chatContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'bot'} ${className}`;
+            messageDiv.textContent = message;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function showButtons(show) {
+            document.getElementById('buttonContainer').style.display = show ? 'block' : 'none';
+            document.getElementById('userInput').style.display = show ? 'none' : 'block';
+        }
+
+        function handleButton(response) {
+            addMessage(response, true);
+            if (response === 'Yes') {
+                addMessage('Please enter your notes.');
+                currentStep = 5;
+                showButtons(false);
+            } else {
+                userData.notes = '';
+                addMessage('Thank you!');
+                currentStep = 6;
+                showButtons(false);
+                document.getElementById('userInput').style.display = 'none';
+                sendEmailNotification();
+            }
+        }
+
+        function validateEmail(email) {
+            return email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/);
+        }
+
+        function validateDate(date) {
+            return date.match(/^\d{4}-\d{2}-\d{2}$/) || 
+                   date.match(/^\d{2}\/\d{2}\/\d{4}$/);
+        }
+
+        function processInput(input) {
+            switch(currentStep) {
+                case 1:
+                    if (!validateEmail(input)) {
+                        addMessage('Please enter a valid email address.');
+                        return;
+                    }
+                    if (validEmails[input]) {
+                        userData.name = validEmails[input].name;
+                        userData.email = input;
+                        userData.manager = validEmails[input].manager;
+                        addMessage(`Hi ${userData.name}, which date are you requesting leave for?`);
+                        currentStep = 2;
+                    } else {
+                        addMessage('Your email was not found. Please check and try again.');
+                    }
+                    break;
+                case 2:
+                    if (!validateDate(input)) {
+                        addMessage('Please enter a valid date format (YYYY-MM-DD).');
+                        return;
+                    }
+                    userData.date = input;
+                    addMessage('Please enter your reason.');
+                    currentStep = 3;
+                    break;
+                case 3:
+                    if (input.length < 3) {
+                        addMessage('Please provide a more detailed reason.');
+                        return;
+                    }
+                    userData.reason = input;
+                    addMessage('Do you have any notes?');
+                    showButtons(true);
+                    currentStep = 4;
+                    break;
+                case 5:
+                    userData.notes = input;
+                    addMessage('Thank you!');
+                    currentStep = 6;
+                    document.getElementById('userInput').style.display = 'none';
+                    sendEmailNotification();
+                    break;
+            }
+        }
+
+        document.getElementById('userInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const input = this.value.trim();
+                if (input) {
+                    addMessage(input, true);
+                    processInput(input);
+                    this.value = '';
+                }
+            }
+        });
+
+        // Initial message
+        addMessage('Please enter your company email.');
+    </script>
+</body>
+</html>
